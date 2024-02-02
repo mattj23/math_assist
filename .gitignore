@@ -1,3 +1,9 @@
+# Special files
+test.md
+test.pickle
+
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
