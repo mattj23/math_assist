@@ -142,4 +142,62 @@ class Equation(ToLatex):
             self.right.multiply_by(-1)
             self.left.multiply_by(-1)
 
+    def cos(self):
+        """ Apply the cosine function to both sides of the equation. """
+        with self._combined_step_context():
+            self._left.cos()
+            self._right.cos()
 
+    def sin(self):
+        """ Apply the sine function to both sides of the equation. """
+        with self._combined_step_context():
+            self._left.sin()
+            self._right.sin()
+
+    def tan(self):
+        """ Apply the tangent function to both sides of the equation. """
+        with self._combined_step_context():
+            self._left.tan()
+            self._right.tan()
+
+    def acos(self):
+        """ Apply the arccosine function to both sides of the equation. """
+        with self._combined_step_context():
+            self._left.acos()
+            self._right.acos()
+
+    def asin(self):
+        """ Apply the arcsine function to both sides of the equation. """
+        with self._combined_step_context():
+            self._left.asin()
+            self._right.asin()
+
+    def atan(self):
+        """ Apply the arctangent function to both sides of the equation. """
+        with self._combined_step_context():
+            self._left.atan()
+            self._right.atan()
+
+    def to_power(self, power: MathArg):
+        """ Raise both sides of the equation to the given power. """
+        with self._combined_step_context():
+            self._left.to_power(power)
+            self._right.to_power(power)
+
+    def sqrt(self):
+        """ Apply the square root function to both sides of the equation. """
+        with self._combined_step_context():
+            self._left.sqrt()
+            self._right.sqrt()
+
+    def root_n(self, n: int):
+        """ Apply the nth root function to both sides of the equation. """
+        with self._combined_step_context():
+            self._left.root_n(n)
+            self._right.root_n(n)
+
+    def substitute(self, *args, description: Optional[str] = None, ignore_args: bool = False):
+        """ Substitute expressions into both sides of the equation. """
+        with self._combined_step_context(description=description):
+            self._left.substitute(*args, ignore_args=ignore_args)
+            self._right.substitute(*args, ignore_args=ignore_args)

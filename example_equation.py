@@ -16,6 +16,10 @@ def main():
         eq.multiply_by(y*5 + 1)
         eq.expand()
         eq.swap_sides()
+        eq.factor()
+        eq.substitute(y, 3*x+1)
+
+
 
 
 if __name__ == '__main__':

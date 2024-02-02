@@ -137,61 +137,73 @@ class Expression(ToLatex):
         terms = [as_expr(t) for t in terms]
         self.apply(sympy.collect, terms, description=description, **kwargs)
 
+    def to_power(self, power: MathArg, description="Raise to the power of"):
+        power = as_expr(power)
+        self._expr = self._expr ** power
+        self._history.append(description, [power], self._expr)
 
-    # def substitute(self, *args):
-    #     if len(args) == 1 and isinstance(args[0], Equation):
-    #         self._substitute(args[0].left, args[0].right)
-    #     elif len(args) == 2:
-    #         self._substitute(args[0], args[1])
-    #     else:
-    #         raise ValueError("Invalid arguments for substitution")
-    #
-    # def _substitute(self, original: Union[Expr, Expression], replacement: Union[Expr, Expression]):
-    #     a = _as_expr(original)
-    #     b = _as_expr(replacement)
-    #     self._expr = self._expr.subs(a, b)
-    #     self._history.append("Substituted", a, b)
-    #     self._substitutions.append((a, b))
-    #
-    # def cos(self):
-    #     from sympy import cos
-    #     self._expr = cos(self._expr)
-    #     self._history.append("Applied cosine")
-    #
-    # def sin(self):
-    #     from sympy import sin
-    #     self._expr = sin(self._expr)
-    #     self._history.append("Applied sine")
-    #
-    # def tan(self):
-    #     from sympy import tan
-    #     self._expr = tan(self._expr)
-    #     self._history.append("Applied tangent")
-    #
-    # def acos(self):
-    #     from sympy import acos
-    #     self._expr = acos(self._expr)
-    #     self._history.append("Applied arccosine")
-    #
-    # def asin(self):
-    #     from sympy import asin
-    #     self._expr = asin(self._expr)
-    #     self._history.append("Applied arcsine")
-    #
-    # def atan(self):
-    #     from sympy import atan
-    #     self._expr = atan(self._expr)
-    #     self._history.append("Applied arctangent")
-    #
-    # def to_power(self, power: ValueUnion):
-    #     power = _as_expr(power)
-    #     self._expr = self._expr ** power
-    #     self._history.append("Raised to the power of", power)
-    #
-    # def as_fraction(self) -> Tuple[Expression, Expression]:
-    #     from sympy import fraction
-    #     n, d = fraction(self._expr)
-    #     return Expression(n), Expression(d)
-    #
-    # def clone(self):
-    #     return deepcopy(self)
+    def cos(self, description="Apply cosine"):
+        self.apply(sympy.cos, description=description)
+
+    def sin(self, description="Apply sine"):
+        self.apply(sympy.sin, description=description)
+
+    def tan(self, description="Apply tangent"):
+        self.apply(sympy.tan, description=description)
+
+    def acos(self, description="Apply arccosine"):
+        self.apply(sympy.acos, description=description)
+
+    def asin(self, description="Apply arcsine"):
+        self.apply(sympy.asin, description=description)
+
+    def atan(self, description="Apply arctangent"):
+        self.apply(sympy.atan, description=description)
+
+    def as_fraction(self) -> sympy.Rational:
+        """ Attempt to interpret the expression as a fraction. This performs no operations on the expression and so
+        generates no entry in the history. """
+        return self._expr.as_numer_denom()
+
+    def sqrt(self, description="Apply square root"):
+        self.apply(sympy.sqrt, description=description)
+
+    def root_n(self, n: int, description="Apply root of "):
+        self.apply(sympy.root, n, description=description)
+
+    def substitute(self, *args, description="Substitute", ignore_args=False):
+        """
+        Substitute one expression for another in the expression.  This is based on calling `sympy.subs` on the
+        expression with the following differences:
+
+        * Only one substitution can be performed at a time
+        * A record of all substitutions sare kept in the expression history
+        * A `sympy.Eq` or `Equation` object can be passed as the first argument, in which case the left hand side
+            will be substituted for the right hand side
+
+        :param args: either two expressions to substitute, or a single `sympy.Eq` or `Equation` object
+        :param description: A description of the substitution to be added to the history to overwrite the default
+        :param ignore_args: If True, the arguments will not be printed inline with the description in the history, use
+            this if the arguments are too long and create clutter in the output
+        """
+        from ._equation import Equation
+        if len(args) == 1:
+            arg = args[0]
+            if isinstance(arg, sympy.Eq):
+                self._substitute(arg.args[0], arg.args[1], description, ignore_args)
+            elif isinstance(arg, Equation):
+                self._substitute(arg.left, arg.right, description, ignore_args)
+            else:
+                raise ValueError("Invalid argument for substitution")
+        elif len(args) == 2:
+            self._substitute(args[0], args[1], description, ignore_args)
+        else:
+            raise ValueError("Invalid arguments for substitution")
+
+    def _substitute(self, original: MathArg, replacement: MathArg , description, ignore_args=False):
+        a = as_expr(original)
+        b = as_expr(replacement)
+        self._expr = self._expr.subs(a, b)
+        self._history.append(description, [] if ignore_args else [sympy.Eq(a, b)], self._expr)
+        self._substitutions.append((a, b))
+
