@@ -13,6 +13,7 @@ def main():
         eq.multiply_by(2)
         eq.right.factor()
         eq.subtract(eq.right)
+        eq.multiply_by(y*5 + 1)
         eq.expand()
 
 

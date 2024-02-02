@@ -68,6 +68,9 @@ class Equation(ToLatex):
     def right(self) -> Expression:
         return self._right
 
+    def _combined_step_context(self):
+        return self._history.combined_step("on both sides")
+
     def apply(self, sympy_func, *args, description: Optional[str] = None, **kwargs):
         """
         This is a general purpose method to apply a sympy function to the equation. Use this for functions which do
@@ -83,30 +86,36 @@ class Equation(ToLatex):
 
     def add(self, other: MathArg):
         """ Add the given expression to both sides of the equation. """
-        self._left.add(other)
-        self._right.add(other)
+        with self._combined_step_context():
+            self._left.add(other)
+            self._right.add(other)
 
     def subtract(self, other: MathArg):
         """ Subtract the given expression from both sides of the equation. """
-        self._left.subtract(other)
-        self._right.subtract(other)
+        with self._combined_step_context():
+            self._left.subtract(other)
+            self._right.subtract(other)
 
     def multiply_by(self, other: MathArg):
         """ Multiply both sides of the equation by the given expression. """
-        self._left.multiply_by(other)
-        self._right.multiply_by(other)
+        with self._combined_step_context():
+            self._left.multiply_by(other)
+            self._right.multiply_by(other)
 
     def divide_by(self, other: MathArg):
         """ Divide both sides of the equation by the given expression. """
-        self._left.divide_by(other)
-        self._right.divide_by(other)
+        with self._combined_step_context():
+            self._left.divide_by(other)
+            self._right.divide_by(other)
 
     def factor(self, deep=False):
         """ Factor both sides of the equation. """
-        self._left.factor(deep)
-        self._right.factor(deep)
+        with self._combined_step_context():
+            self._left.factor(deep)
+            self._right.factor(deep)
 
     def expand(self):
         """ Expand both sides of the equation. """
-        self._left.expand()
-        self._right.expand()
+        with self._combined_step_context():
+            self._left.expand()
+            self._right.expand()

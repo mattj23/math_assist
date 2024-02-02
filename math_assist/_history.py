@@ -34,6 +34,7 @@ class WorkStep:
     before: Any
     after: Any
     suffix: Optional[str] = None
+    children: Optional[List[WorkStep]] = None
 
 
 def _write_step(step: WorkStep, output: MathOutput):
@@ -45,6 +46,22 @@ def _write_step(step: WorkStep, output: MathOutput):
 class ParentHistory:
     tag: str
     history: WorkingHistory
+
+
+class ParentStepContext:
+    def __init__(self, history: WorkingHistory, tag: str):
+        self._history = history
+        self.tag = tag
+        self.sub_steps = []
+
+    def append_step(self, step: WorkStep):
+        self.sub_steps.append(step)
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._history.end_combined_step()
 
 
 class WorkingHistory:
@@ -66,9 +83,30 @@ class WorkingHistory:
 
         self._get_combined_state = get_combined_state
 
+        self._combined_context: Optional[ParentStepContext] = None
+
     @property
     def index_source(self):
         return self._index_source
+
+    def combined_step(self, tag: str):
+        self._combined_context = ParentStepContext(self, tag)
+        return self._combined_context
+
+    def end_combined_step(self):
+        if self._combined_context:
+            first_step = self._combined_context.sub_steps[0]
+            last_step = self._combined_context.sub_steps[-1]
+
+            step = WorkStep(self._index_source.take(),
+                            first_step.description,
+                            first_step.args,
+                            first_step.before,
+                            last_step.after,
+                            suffix=self._combined_context.tag,
+                            children=self._combined_context.sub_steps)
+            self._append_step(step)
+        self._combined_context = None
 
     def as_parent(self, tag: str):
         return ParentHistory(tag, self)
@@ -98,7 +136,10 @@ class WorkingHistory:
         step.suffix = f" on {tag}"
         step.before = self._last_state
         step.after = self._current_state
-        self._append_step(step)
+        if self._combined_context:
+            self._combined_context.append_step(step)
+        else:
+            self._append_step(step)
 
     def __iter__(self):
         return iter(self._history)
