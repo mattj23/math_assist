@@ -8,7 +8,7 @@ from typing import Union, Optional
 
 import sympy
 from ._common import MathArg, ToLatex, MathOutput
-from ._history import WorkingHistory, IndexSource
+from ._history import WorkingHistory, IndexSource, ParentHistory
 from ._expression import Expression, as_expr
 
 
@@ -31,8 +31,8 @@ class Equation(ToLatex):
         # We will need a common index source to keep the left and right side histories in sync.
         self._index_source = IndexSource()
         self._history = WorkingHistory(self._index_source)
-        self._left_history = WorkingHistory(self._index_source)
-        self._right_history = WorkingHistory(self._index_source)
+        self._left_history = WorkingHistory(parent=self._history.as_parent("left side"))
+        self._right_history = WorkingHistory(parent=self._history.as_parent("right side"))
 
         if isinstance(left, sympy.Eq):
             lhs, rhs = left.args
@@ -41,6 +41,18 @@ class Equation(ToLatex):
         else:
             self._left = Expression(as_expr(left), history=self._left_history)
             self._right = Expression(as_expr(right or 0), history=self._right_history)
+
+    def attach_output(self, output: MathOutput, skip_start_state: bool = False):
+        if not skip_start_state:
+            output("Initial equation:")
+            output(self)
+        self._history.attach_output(output)
+
+    def detach_output(self, output: MathOutput):
+        self._history.detach_output(output)
+
+    def detach_all_outputs(self):
+        self._history.detach_all_outputs()
 
     @property
     def as_sympy(self) -> sympy.Eq:

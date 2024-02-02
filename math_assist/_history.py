@@ -1,5 +1,7 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional, List
+from copy import copy
 from ._common import MathOutput
 
 
@@ -20,22 +22,51 @@ class WorkStep:
     args: List[Any]
     before: Any
     after: Any
+    suffix: Optional[str] = None
 
 
 def _write_step(step: WorkStep, output: MathOutput):
-    output(step.description, *step.args, inline=True)
+    output(step.description, *step.args, step.suffix or "", inline=True)
     output(step.after)
 
 
+@dataclass
+class ParentHistory:
+    tag: str
+    history: WorkingHistory
+
+
 class WorkingHistory:
-    def __init__(self, index_source: Optional[IndexSource] = None):
-        self._index_source = index_source if index_source else IndexSource()
+    def __init__(self, index_source: Optional[IndexSource] = None,
+                 parent: Optional[ParentHistory] = None):
+        self._index_source = index_source or IndexSource()
+
+        self._parent = parent
+        if self._parent is not None:
+            self._index_source = self._parent.history.index_source
+
         self._history = []
         self._outputs: List[MathOutput] = []
 
+    @property
+    def index_source(self):
+        return self._index_source
+
+    def as_parent(self, tag: str):
+        return ParentHistory(tag, self)
+
     def append(self, description: str, arg_list: List, before: Optional[Any] = None, after: Optional[Any] = None):
         step = WorkStep(self._index_source.take(), description, arg_list, before, after)
+        self._append_step(step)
+
+    def _append_step(self, step: WorkStep):
         self._history.append(step)
+
+        if self._parent:
+            copied = copy(step)
+            copied.suffix = f" on {self._parent.tag}"
+            self._parent.history._append_step(copied)
+
         for output in self._outputs:
             _write_step(step, output)
 

@@ -15,6 +15,12 @@ def as_expr(item: MathArg) -> sympy.Expr:
         return item.expr
     elif isinstance(item, sympy.Expr):
         return item
+    elif isinstance(item, int):
+        return sympy.Integer(item)
+    elif isinstance(item, float):
+        return sympy.Float(item)
+    elif isinstance(item, sympy.Symbol):
+        return item
     else:
         return sympy.Expr(item)
 

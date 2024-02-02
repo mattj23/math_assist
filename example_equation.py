@@ -9,8 +9,11 @@ def main():
     eq = Equation(x**2 + 3, y*(y - 2) + 4)
 
     with Markdown(file_name="temp.md") as output:
-        output("Original equation:")
-        output(eq)
+        eq.attach_output(output)
+        eq.multiply_by(2)
+        eq.right.factor()
+        eq.subtract(eq.right)
+        eq.expand()
 
 
 if __name__ == '__main__':
