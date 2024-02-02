@@ -3,11 +3,11 @@
     of operations performed on the expression while mutating the underlying expression value.
 
 """
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 
 import sympy
 from ._common import MathArg, ToLatex, MathOutput
-from ._history import WorkingHistory
+from ._history import WorkingHistory, HistoryTarget
 
 
 def as_expr(item: MathArg) -> sympy.Expr:
@@ -28,7 +28,7 @@ def as_expr(item: MathArg) -> sympy.Expr:
 class Expression(ToLatex):
     def __init__(self, expr: sympy.Expr, *args, **kwargs):
         self._expr = expr
-        self._history = kwargs.get('history', WorkingHistory())
+        self._history = kwargs.get('history', WorkingHistory(current_state=self._expr))
         self._substitutions = []
 
     @property
@@ -84,34 +84,28 @@ class Expression(ToLatex):
         """
         if description is None:
             description = f"Apply '{sympy_func.__name__}'"
-        before = self._expr
-        after = sympy_func(self._expr, *args, **kwargs)
-        self._expr = after
-        self._history.append(description, list(args), before=before, after=after)
+        self._expr = sympy_func(self._expr, *args, **kwargs)
+        self._history.append(description, list(args), self._expr)
 
     def add(self, other: MathArg, description="Add"):
         other = as_expr(other)
-        before = self._expr
         self._expr += other
-        self._history.append(description, [other], before=before, after=self._expr)
+        self._history.append(description, [other], self._expr)
 
     def subtract(self, other: MathArg, description="Subtract"):
         other = as_expr(other)
-        before = self._expr
         self._expr -= other
-        self._history.append(description, [other], before=before, after=self._expr)
+        self._history.append(description, [other], self._expr)
 
     def multiply_by(self, other: MathArg, description="Multiply by"):
         other = as_expr(other)
-        before = self._expr
         self._expr *= other
-        self._history.append(description, [other], before=before, after=self._expr)
+        self._history.append(description, [other], self._expr)
 
     def divide_by(self, other: MathArg, description="Divide by"):
         other = as_expr(other)
-        before = self._expr
         self._expr /= other
-        self._history.append(description, [other], before=before, after=self._expr)
+        self._history.append(description, [other], self._expr)
 
     def factor(self, deep=False, description="Factor terms"):
         self.apply(sympy.factor, description=description, deep=deep)

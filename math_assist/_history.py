@@ -1,6 +1,7 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Callable
 from copy import copy
 from ._common import MathOutput
 
@@ -13,6 +14,16 @@ class IndexSource:
         index = self._index
         self._index += 1
         return index
+
+
+class HistoryTarget(ABC):
+    @abstractmethod
+    def get_last_state(self) -> Any:
+        pass
+
+    @abstractmethod
+    def get_current_state(self) -> Any:
+        pass
 
 
 @dataclass
@@ -38,8 +49,13 @@ class ParentHistory:
 
 class WorkingHistory:
     def __init__(self, index_source: Optional[IndexSource] = None,
-                 parent: Optional[ParentHistory] = None):
+                 parent: Optional[ParentHistory] = None,
+                 current_state: Any = None,
+                 get_combined_state: Optional[Callable[[], Any]] = None):
         self._index_source = index_source or IndexSource()
+
+        self._last_state = None
+        self._current_state = current_state
 
         self._parent = parent
         if self._parent is not None:
@@ -48,6 +64,8 @@ class WorkingHistory:
         self._history = []
         self._outputs: List[MathOutput] = []
 
+        self._get_combined_state = get_combined_state
+
     @property
     def index_source(self):
         return self._index_source
@@ -55,20 +73,32 @@ class WorkingHistory:
     def as_parent(self, tag: str):
         return ParentHistory(tag, self)
 
-    def append(self, description: str, arg_list: List, before: Optional[Any] = None, after: Optional[Any] = None):
-        step = WorkStep(self._index_source.take(), description, arg_list, before, after)
+    def update(self, new_state: Any):
+        self._last_state = self._current_state
+        self._current_state = new_state
+
+    def append(self, description: str, arg_list: List, new_state: Any):
+        self.update(new_state)
+        step = WorkStep(self._index_source.take(), description, arg_list, self._last_state, self._current_state)
         self._append_step(step)
 
     def _append_step(self, step: WorkStep):
         self._history.append(step)
 
         if self._parent:
-            copied = copy(step)
-            copied.suffix = f" on {self._parent.tag}"
-            self._parent.history._append_step(copied)
+            self._parent.history._append_by_child(step, self._parent.tag)
 
         for output in self._outputs:
             _write_step(step, output)
+
+    def _append_by_child(self, step: WorkStep, tag: str):
+        self.update(self._get_combined_state())
+
+        step = copy(step)
+        step.suffix = f" on {tag}"
+        step.before = self._last_state
+        step.after = self._current_state
+        self._append_step(step)
 
     def __iter__(self):
         return iter(self._history)

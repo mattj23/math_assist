@@ -15,7 +15,7 @@ from ._expression import Expression, as_expr
 class Equation(ToLatex):
 
     def to_latex(self) -> str:
-        return sympy.latex(self.as_sympy)
+        return sympy.latex(self.as_sympy())
 
     def __init__(self, left: Union[sympy.Expr, sympy.Eq, Expression],
                  right: Optional[MathArg] = None):
@@ -30,7 +30,8 @@ class Equation(ToLatex):
 
         # We will need a common index source to keep the left and right side histories in sync.
         self._index_source = IndexSource()
-        self._history = WorkingHistory(self._index_source)
+        self._history = WorkingHistory(self._index_source, get_combined_state=self.as_sympy)
+
         self._left_history = WorkingHistory(parent=self._history.as_parent("left side"))
         self._right_history = WorkingHistory(parent=self._history.as_parent("right side"))
 
@@ -41,6 +42,8 @@ class Equation(ToLatex):
         else:
             self._left = Expression(as_expr(left), history=self._left_history)
             self._right = Expression(as_expr(right or 0), history=self._right_history)
+
+        self._history.update(self.as_sympy())
 
     def attach_output(self, output: MathOutput, skip_start_state: bool = False):
         if not skip_start_state:
@@ -54,7 +57,6 @@ class Equation(ToLatex):
     def detach_all_outputs(self):
         self._history.detach_all_outputs()
 
-    @property
     def as_sympy(self) -> sympy.Eq:
         return sympy.Eq(self._left.expr, self._right.expr)
 
