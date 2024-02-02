@@ -15,6 +15,7 @@ def main():
         eq.subtract(eq.right)
         eq.multiply_by(y*5 + 1)
         eq.expand()
+        eq.swap_sides()
 
 
 if __name__ == '__main__':

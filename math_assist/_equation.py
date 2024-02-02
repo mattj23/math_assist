@@ -32,16 +32,16 @@ class Equation(ToLatex):
         self._index_source = IndexSource()
         self._history = WorkingHistory(self._index_source, get_combined_state=self.as_sympy)
 
-        self._left_history = WorkingHistory(parent=self._history.as_parent("left side"))
-        self._right_history = WorkingHistory(parent=self._history.as_parent("right side"))
+        left_history = WorkingHistory(parent=self._history.as_parent("left side"))
+        right_history = WorkingHistory(parent=self._history.as_parent("right side"))
 
         if isinstance(left, sympy.Eq):
             lhs, rhs = left.args
-            self._left = Expression(as_expr(lhs), history=self._left_history)
-            self._right = Expression(as_expr(rhs), history=self._right_history)
+            self._left = Expression(as_expr(lhs), history=left_history)
+            self._right = Expression(as_expr(rhs), history=right_history)
         else:
-            self._left = Expression(as_expr(left), history=self._left_history)
-            self._right = Expression(as_expr(right or 0), history=self._right_history)
+            self._left = Expression(as_expr(left), history=left_history)
+            self._right = Expression(as_expr(right or 0), history=right_history)
 
         self._history.update(self.as_sympy())
 
@@ -68,8 +68,11 @@ class Equation(ToLatex):
     def right(self) -> Expression:
         return self._right
 
-    def _combined_step_context(self):
-        return self._history.combined_step("on both sides")
+    def _combined_step_context(self, description: Optional[str] = None,
+                               tag: Optional[str] = None,
+                               args: Optional[list] = None):
+        tag = "on both sides" if tag is None else tag
+        return self._history.combined_step(tag, description=description, args=args)
 
     def apply(self, sympy_func, *args, description: Optional[str] = None, **kwargs):
         """
@@ -119,3 +122,24 @@ class Equation(ToLatex):
         with self._combined_step_context():
             self._left.expand()
             self._right.expand()
+
+    def collect(self, *args):
+        """ Collect terms on both sides of the equation. """
+        with self._combined_step_context():
+            self._left.collect(*args)
+            self._right.collect(*args)
+
+    def swap_sides(self):
+        """ Swap the left and right sides of the equation. """
+        with self._combined_step_context("Swap left and right sides", tag="", args=[]):
+            # For now this is easier than swapping the histories.
+            lhs = self.left.expr
+            rhs = self.right.expr
+            self.left.subtract(lhs)
+            self.left.subtract(rhs)
+            self.right.subtract(lhs)
+            self.right.subtract(rhs)
+            self.right.multiply_by(-1)
+            self.left.multiply_by(-1)
+
+

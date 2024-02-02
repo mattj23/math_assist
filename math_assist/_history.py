@@ -49,13 +49,31 @@ class ParentHistory:
 
 
 class ParentStepContext:
-    def __init__(self, history: WorkingHistory, tag: str):
+    def __init__(self,
+                 history: WorkingHistory,
+                 tag: str,
+                 description: Optional[str] = None,
+                 args: Optional[List[Any]] = None):
         self._history = history
         self.tag = tag
         self.sub_steps = []
+        self.description = description
+        self.args = args
 
     def append_step(self, step: WorkStep):
         self.sub_steps.append(step)
+
+    def build_combined_step(self) -> WorkStep:
+        first_step = self.sub_steps[0]
+        last_step = self.sub_steps[-1]
+
+        return WorkStep(self._history.index_source.take(),
+                        self.description or first_step.description,
+                        first_step.args if self.args is None else self.args,
+                        first_step.before,
+                        last_step.after,
+                        suffix=self.tag,
+                        children=self.sub_steps)
 
     def __enter__(self):
         pass
@@ -89,23 +107,13 @@ class WorkingHistory:
     def index_source(self):
         return self._index_source
 
-    def combined_step(self, tag: str):
-        self._combined_context = ParentStepContext(self, tag)
+    def combined_step(self, tag: str, description: Optional[str] = None, args: Optional[List[Any]] = None):
+        self._combined_context = ParentStepContext(self, tag, description, args)
         return self._combined_context
 
     def end_combined_step(self):
         if self._combined_context:
-            first_step = self._combined_context.sub_steps[0]
-            last_step = self._combined_context.sub_steps[-1]
-
-            step = WorkStep(self._index_source.take(),
-                            first_step.description,
-                            first_step.args,
-                            first_step.before,
-                            last_step.after,
-                            suffix=self._combined_context.tag,
-                            children=self._combined_context.sub_steps)
-            self._append_step(step)
+            self._append_step(self._combined_context.build_combined_step())
         self._combined_context = None
 
     def as_parent(self, tag: str):
