@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import Optional, Union, List, Any, Dict, Callable
+from typing import Optional, Union, List, Any, Dict, Callable, Tuple
 from dataclasses import dataclass
 
 from sympy import Expr, Eq, solveset
 from copy import deepcopy
+
+ValueUnion = Union[int, float, Expr, "Expression"]
 
 
 def _as_expr(item: Union[Expr, Expression]) -> Expr:
@@ -90,7 +92,7 @@ class Expression:
 
     def substitute(self, *args):
         if len(args) == 1 and isinstance(args[0], Equation):
-            self._substitute(args[0].right, args[0].left)
+            self._substitute(args[0].left, args[0].right)
         elif len(args) == 2:
             self._substitute(args[0], args[1])
         else:
@@ -132,6 +134,20 @@ class Expression:
         from sympy import atan
         self._expr = atan(self._expr)
         self._history.append("Applied arctangent")
+
+    def to_power(self, power: ValueUnion):
+        power = _as_expr(power)
+        self._expr = self._expr ** power
+        self._history.append("Raised to the power of", power)
+
+    def as_fraction(self) -> Tuple[Expression, Expression]:
+        from sympy import fraction
+        n, d = fraction(self._expr)
+        return Expression(n), Expression(d)
+
+
+    def clone(self):
+        return deepcopy(self)
 
 
 class Equation:
@@ -212,3 +228,14 @@ class Equation:
     def atan(self):
         self._left.atan()
         self._right.atan()
+
+    def to_power(self, power: ValueUnion):
+        self._left.to_power(power)
+        self._right.to_power(power)
+
+    def substitute(self, *args):
+        self._left.substitute(*args)
+        self._right.substitute(*args)
+
+    def clone(self):
+        return deepcopy(self)
