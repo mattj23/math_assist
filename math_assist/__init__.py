@@ -1,1 +1,2 @@
-from ._sympy_entities import Expression, Equation
+from ._expression import Expression
+from ._equation import Equation

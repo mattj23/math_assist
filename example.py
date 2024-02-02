@@ -1,6 +1,6 @@
 from sympy import *
 from math_assist import Equation, Expression
-from math_assist.output import MarkdownOutput
+from math_assist.output import Markdown
 
 
 def main():
@@ -9,7 +9,7 @@ def main():
     y_eq = Equation(y, (r0 + s0) * sin(theta))
     eq = Equation(s1, sqrt((h-x)**2 + y**2) - r1)
 
-    with MarkdownOutput(file_name="test.md") as markdown:
+    with Markdown(file_name="test.md") as markdown:
         markdown("Original equations:")
         markdown(x_eq, y_eq, eq)
 
