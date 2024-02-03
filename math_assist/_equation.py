@@ -99,6 +99,20 @@ class Equation(ToLatex):
             self._left.subtract(other)
             self._right.subtract(other)
 
+    def subtract_left(self, description: Optional[str] = "Subtract left from both sides"):
+        """ Subtract the left side from the equation. """
+        with self._combined_step_context(description=description, args=[], tag=""):
+            other = self._left.expr
+            self._right.subtract(other)
+            self._left.subtract(other)
+
+    def subtract_right(self, description: Optional[str] = "Subtract right from both sides"):
+        """ Subtract the right side from the equation. """
+        with self._combined_step_context(description=description, args=[], tag=""):
+            other = self._right.expr
+            self._left.subtract(other)
+            self._right.subtract(other)
+
     def multiply_by(self, other: MathArg):
         """ Multiply both sides of the equation by the given expression. """
         with self._combined_step_context():
@@ -201,3 +215,7 @@ class Equation(ToLatex):
         with self._combined_step_context(description=description):
             self._left.substitute(*args, ignore_args=ignore_args)
             self._right.substitute(*args, ignore_args=ignore_args)
+
+    def solve(self, *symbols, **flags):
+        """ Solve the equation for the given symbol(s). This is a direct wrapper around sympy.solve. """
+        return sympy.solve(self.as_sympy(), *symbols, **flags)

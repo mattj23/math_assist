@@ -3,11 +3,14 @@
     of operations performed on the expression while mutating the underlying expression value.
 
 """
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Callable
 
 import sympy
+import sympy.core.traversal
 from ._common import MathArg, ToLatex, MathOutput
+from ._tree import ExpressionTree
 from ._history import WorkingHistory, HistoryTarget
+
 
 
 def as_expr(item: MathArg) -> sympy.Expr:
@@ -58,6 +61,45 @@ class Expression(ToLatex):
 
     def detach_all_outputs(self):
         self._history.detach_all_outputs()
+
+    def get_tree(self) -> ExpressionTree:
+        """ Gets the expression as a tree of sympy nodes, but wrapped in the `Node` class from the tree module so that
+        navigation upwards is possible. """
+        return ExpressionTree(self._expr)
+
+    def search_func(self, func_type: type, only_one: bool = False) -> List[sympy.Basic]:
+        """
+        Search the expression for subexpressions which are instances of the given type.  The type should be a subclass
+        of sympy.Basic.
+
+        :param func_type: a subclass of sympy.Basic
+        :param only_one: if True, the search will stop after the first match is found
+        :return: a list of subexpressions which are instances of the given type
+        """
+        return self.search(lambda k: k.func == func_type, only_one)
+
+    def search(self, predicate: Callable[[sympy.Basic], bool], only_one: bool = False) -> List[sympy.Basic]:
+        """
+        Search the expression for subexpressions which match the predicate.  The predicate should be a callable which
+        takes a sympy.Expr as its only argument and returns True if the expression matches the search criteria.
+
+        :param predicate: a callable which takes a sympy.Basic as its only argument and returns True if the expression
+            matches the search criteria
+        :param only_one: if True, the search will stop after the first match is found
+        :return: a list of subexpressions which match the search criteria
+        """
+        results = []
+
+        def _search(item: sympy.Basic):
+            if predicate(item):
+                results.append(item)
+                if only_one:
+                    return
+            for arg in item.args:
+                _search(arg)
+
+        _search(self._expr)
+        return results
 
     def apply(self, sympy_func, *args, description: Optional[str] = None, **kwargs):
         """
@@ -200,10 +242,9 @@ class Expression(ToLatex):
         else:
             raise ValueError("Invalid arguments for substitution")
 
-    def _substitute(self, original: MathArg, replacement: MathArg , description, ignore_args=False):
+    def _substitute(self, original: MathArg, replacement: MathArg, description, ignore_args=False):
         a = as_expr(original)
         b = as_expr(replacement)
         self._expr = self._expr.subs(a, b)
         self._history.append(description, [] if ignore_args else [sympy.Eq(a, b)], self._expr)
         self._substitutions.append((a, b))
-
