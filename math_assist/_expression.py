@@ -10,6 +10,7 @@ import sympy.core.traversal
 from ._common import MathArg, ToLatex, MathOutput
 from ._tree import ExpressionTree
 from ._history import WorkingHistory, HistoryTarget
+from copy import deepcopy
 
 
 
@@ -40,8 +41,10 @@ class Expression(ToLatex):
 
     @property
     def expr(self):
-        from copy import deepcopy
         return deepcopy(self._expr)
+
+    def clone(self):
+        return deepcopy(self)
 
     def to_latex(self) -> str:
         from sympy import latex

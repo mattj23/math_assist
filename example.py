@@ -28,115 +28,121 @@ def distance_equation(arc1: Side, x, y):
     return s1, r1, h, eq
 
 
-def main():
-    arc0 = Side.INSIDE
-    arc1 = Side.INSIDE
+def work_out_rlfs(arc0: Side, arc1: Side, output: Markdown):
     x, y, r0, s0, theta, x_eq, y_eq = xy_equations(arc0)
     s1, r1, h, eq = distance_equation(arc1, x=x, y=y)
     s = symbols("s")
 
-    with Markdown(file_name="temp.md") as markdown:
-        markdown("X and Y equations:")
-        markdown(x_eq, y_eq)
+    output("X and Y equations:")
+    output(x_eq, y_eq)
+    eq.attach_output(output)
 
-        # Attach the main working equation
-        eq.attach_output(markdown)
+    # Isolate the root
+    tree = eq.right.get_tree()
+    sqrt_terms = tree.find_type(Pow)[0]
+    route = sqrt_terms.route_from_root()
+    for r in route:
+        if r.node.func_type == sympy.Add:
+            for c in r.other_children():
+                eq.subtract(c.item)
+        elif r.node.func_type == sympy.Mul:
+            for c in r.other_children():
+                eq.divide_by(c.item)
+        else:
+            raise ValueError(f"Unexpected type {r.node.func_type}")
 
-        # Isolate the root
-        tree = eq.right.get_tree()
-        sqrt_terms = tree.find_type(Pow)[0]
-        route = sqrt_terms.route_from_root()
-        for r in route:
-            if r.node.func_type == sympy.Add:
-                for c in r.other_children():
-                    eq.subtract(c.item)
-            elif r.node.func_type == sympy.Mul:
-                for c in r.other_children():
-                    eq.divide_by(c.item)
-            else:
-                raise ValueError(f"Unexpected type {r.node.func_type}")
+    eq.substitute(x_eq)
+    eq.substitute(y_eq)
 
-        eq.substitute(x_eq)
-        eq.substitute(y_eq)
+    eq.to_power(2)
+    eq.substitute(s1, s)
+    eq.substitute(s0, s)
+    eq.subtract_right()
+    eq.left.expand()
+    eq.left.collect([s, s ** 2])
+    eq.left.simplify()
+    solutions = eq.solve(s)
+    assert len(solutions) == 1
+    sol = solutions[0]
+    output("Solution:")
+    output(sol)
 
-        eq.to_power(2)
-        eq.substitute(s1, s)
-        eq.substitute(s0, s)
-        eq.subtract_right()
-        eq.left.expand()
-        eq.left.collect([s, s ** 2])
-        eq.left.simplify()
-        # eq.left.collect([s])
+    eq.detach_all_outputs()
 
-        solutions = eq.solve(s)
-        markdown("Solutions:")
-        for sol in solutions:
-            markdown(sol)
+    return Expression(sol)
 
-        # result = eq.solve(s).args[0]
-        # sol = Equation(s, result)
-        # markdown(sol)
-        #
-        # markdown("---")
-        #
-        # h1, h2, r2, theta_0 = symbols("h_1 h_2 r_2 theta_0")
-        #
-        # lhs = sol.right.clone()
-        # rhs = sol.right.clone()
-        #
-        # lhs.substitute(h, h1)
-        # rhs.substitute(h, h2)
-        # rhs.substitute(r1, r2)
-        # rhs.substitute(theta, theta + theta_0)
-        #
-        # _, d_rhs = rhs.as_fraction()
-        # _, d_lhs = lhs.as_fraction()
-        #
-        # eq = Equation(lhs, rhs)
-        # markdown("Intersection equation:")
-        # markdown(eq)
-        #
-        # markdown("Multiply by denominators:")
-        # eq.multiply_by(d_lhs)
-        # eq.multiply_by(d_rhs)
-        # eq.left.simplify()
-        # eq.right.simplify()
-        # markdown(eq)
-        #
-        # markdown("Move terms to left hand side:")
-        # eq.subtract(eq.right)
-        # markdown(eq)
-        #
-        # markdown("Expand left hand side:")
-        # eq.left.expand()
-        # markdown(eq)
-        #
-        # terms = [cos(theta), cos(theta + theta_0)]
-        # markdown("Collect terms:")
-        # cs = eq.left.collect(terms)
-        # markdown(eq)
-        #
-        # markdown("Substitutions:")
-        # a, b, c = symbols("a b c")
-        # eq_a = Equation(cs[cos(theta)], a)
-        # eq_b = Equation(cs[cos(theta + theta_0)], b)
-        # eq_c = Equation(cs[1], c)
-        # markdown(eq_a, eq_b, eq_c)
-        #
-        # eq.substitute(eq_a)
-        # eq.substitute(eq_b)
-        # eq.substitute(eq_c)
-        # markdown(eq)
-        #
-        # # markdown("Solve for $\\theta$")
-        # # # result = eq.solve(theta)
-        # # result = solve(eq.eq, theta, domain=S.Reals)
-        # # markdown(result)
-        #
-        # markdown("Acos")
-        # eq.acos()
-        # eq.left.simplify()
-        # markdown(eq)
+def to_simplified_coeffs(lhs: Expression, rhs: Expression, md: Markdown):
+    h, r1, theta, h1, h2, r2, theta_0 = symbols("h r1 theta h_1 h_2 r_2 theta_0")
+    lhs.substitute(h, h1)
+    rhs.substitute(h, h2)
+    rhs.substitute(r1, r2)
+    rhs.substitute(theta, theta + theta_0)
+
+    eq = Equation(lhs, rhs)
+    eq.attach_output(md)
+
+    n_lhs, d_lhs = eq.left.as_fraction()
+    n_rhs, d_rhs = eq.right.as_fraction()
+    eq.multiply_by(d_lhs * d_rhs)
+    eq.subtract_right()
+    eq.left.simplify()
+    eq.left.expand()
+    terms = [cos(theta), cos(theta + theta_0)]
+    eq.left.collect(terms)
+    cs = eq.left.collect_coeffs_only(terms)
+
+    md("Substitutions:")
+    a, b, c = symbols("a b c")
+    eq_a = Equation(cs[cos(theta)], a)
+    eq_b = Equation(cs[cos(theta + theta_0)], b)
+    eq_c = Equation(cs[1], c)
+    md(eq_a, eq_b, eq_c)
+
+    eq.substitute(eq_a)
+    eq.substitute(eq_b)
+    eq.substitute(eq_c)
+
+
+def main():
+    with Markdown(file_name="temp.md") as md:
+        md("# Derivations for RLFS of Two Arcs")
+
+        md("## Inside Facing Arc")
+        md("### Inside Facing to Outside Facing")
+        in_out = work_out_rlfs(Side.INSIDE, Side.OUTSIDE, md)
+
+        md("### Inside Facing to Inside Facing")
+        in_in = work_out_rlfs(Side.INSIDE, Side.INSIDE, md)
+
+        md("### Intersections Between RLFS of Two Arcs")
+
+        md("**Second Arcs are Both Outside Facing**\n")
+        to_simplified_coeffs(in_out.clone(), in_out.clone(), md)
+
+        md("**Second Arcs are Both Inside Facing**\n")
+        to_simplified_coeffs(in_in.clone(), in_in.clone(), md)
+
+        md("**Second Arcs are One Inside and One Outside Facing**\n")
+        to_simplified_coeffs(in_out.clone(), in_in.clone(), md)
+
+        md("## Outside Facing Arc")
+        md("### Outside Facing to Outside Facing")
+        out_out = work_out_rlfs(Side.OUTSIDE, Side.OUTSIDE, md)
+
+        md("### Outside Facing to Inside Facing")
+        out_in = work_out_rlfs(Side.OUTSIDE, Side.INSIDE, md)
+
+        md("### Intersections Between RLFS of Two Arcs")
+
+        md("**Second Arcs are Both Outside Facing**\n")
+        to_simplified_coeffs(out_out.clone(), out_out.clone(), md)
+
+        md("**Second Arcs are Both Inside Facing**\n")
+        to_simplified_coeffs(out_in.clone(), out_in.clone(), md)
+
+        md("**Second Arcs are One Inside and One Outside Facing**\n")
+        to_simplified_coeffs(out_out.clone(), out_in.clone(), md)
+
 
 
 if __name__ == '__main__':
